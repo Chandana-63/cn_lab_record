@@ -1,0 +1,59 @@
+# Create simulator
+set ns [new Simulator]
+
+# Enable Link State Routing
+$ns rtproto LS
+
+# NAM file
+set nf [open out.nam w]
+$ns namtrace-all $nf
+
+# Finish
+proc finish {} {
+    global ns nf
+    $ns flush-trace
+    close $nf
+    exec nam out.nam &
+    exit 0
+}
+
+# Nodes
+set n0 [$ns node]
+set n1 [$ns node]
+set n2 [$ns node]
+set n3 [$ns node]
+
+# Links
+$ns duplex-link $n0 $n1 1Mb 10ms DropTail
+$ns duplex-link $n1 $n2 1Mb 10ms DropTail
+$ns duplex-link $n2 $n3 1Mb 10ms DropTail
+$ns duplex-link $n0 $n3 1Mb 10ms DropTail
+
+# UDP Traffic
+set udp [new Agent/UDP]
+$ns attach-agent $n0 $udp
+
+set null [new Agent/Null]
+$ns attach-agent $n3 $null
+
+$ns connect $udp $null
+
+# CBR
+set cbr [new Application/Traffic/CBR]
+$cbr attach-agent $udp
+$cbr set packetSize_ 500
+$cbr set interval_ 0.01
+
+# Start traffic
+$ns at 0.5 "$cbr start"
+
+# Link failure & recovery
+$ns rtmodel-at 1.5 down $n1 $n2
+$ns rtmodel-at 2.5 up $n1 $n2
+
+# Stop + End
+$ns at 4.0 "$cbr stop"
+$ns at 5.0 "finish"
+
+# Run
+$ns run

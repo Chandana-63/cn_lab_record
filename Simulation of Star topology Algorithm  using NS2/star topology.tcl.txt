@@ -1,0 +1,53 @@
+# Create simulator
+set ns [new Simulator]
+
+# NAM file
+set nf [open out.nam w]
+$ns namtrace-all $nf
+
+# Finish
+proc finish {} {
+    global ns nf
+    $ns flush-trace
+    close $nf
+    exec nam out.nam &
+    exit 0
+}
+
+# Nodes (center + 3)
+set n0 [$ns node]   ;# center
+set n1 [$ns node]
+set n2 [$ns node]
+set n3 [$ns node]
+
+$n0 shape square
+
+# Links (star)
+$ns duplex-link $n0 $n1 1Mb 10ms DropTail
+$ns duplex-link $n0 $n2 1Mb 10ms DropTail
+$ns duplex-link $n0 $n3 1Mb 10ms DropTail
+
+# TCP
+set tcp [new Agent/TCP]
+$ns attach-agent $n1 $tcp
+
+set sink [new Agent/TCPSink]
+$ns attach-agent $n3 $sink
+
+$ns connect $tcp $sink
+
+# CBR traffic
+set cbr [new Application/Traffic/CBR]
+$cbr attach-agent $tcp
+$cbr set packetSize_ 500
+$cbr set interval_ 0.01
+
+# Start/Stop
+$ns at 0.5 "$cbr start"
+$ns at 4.5 "$cbr stop"
+
+# End
+$ns at 5.0 "finish"
+
+# Run
+$ns run
